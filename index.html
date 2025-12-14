@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>QUEST WINDOW</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#000000">
+
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --glow:#7f5cff;
+}
+
+body{
+  margin:0;
+  font-family:'Orbitron',sans-serif;
+  background:black;
+  overflow:hidden;
+}
+
+/* ===== BACKDROP ===== */
+.backdrop{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.85);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+/* ===== QUEST WINDOW ===== */
+.quest-window{
+  background:#06000f;
+  border:2px solid var(--glow);
+  border-radius:14px;
+  padding:20px;
+  width:320px;
+  box-shadow:0 0 25px var(--glow);
+  color:#fff;
+  animation:flicker 2.5s infinite;
+}
+
+/* ===== TEXT ===== */
+.title{
+  color:var(--glow);
+  font-size:1.2em;
+  margin-bottom:10px;
+  text-align:center;
+}
+
+.line{
+  font-size:.9em;
+  margin-bottom:8px;
+}
+
+/* ===== BUTTON ===== */
+button{
+  width:100%;
+  margin-top:10px;
+  background:linear-gradient(135deg,var(--glow),#fff);
+  border:none;
+  border-radius:10px;
+  padding:8px;
+  font-family:inherit;
+  cursor:pointer;
+}
+
+/* ===== FLICKER ===== */
+@keyframes flicker{
+  0%{opacity:1}
+  5%{opacity:.85}
+  10%{opacity:1}
+  15%{opacity:.7}
+  20%{opacity:1}
+  100%{opacity:1}
+}
+
+/* ===== GLITCH TEXT ===== */
+.glitch{
+  animation:glitch 1.8s infinite;
+}
+@keyframes glitch{
+  0%{text-shadow:none}
+  20%{text-shadow:2px 0 red,-2px 0 blue}
+  40%{text-shadow:none}
+  60%{text-shadow:-2px 0 red,2px 0 blue}
+  100%{text-shadow:none}
+}
+</style>
+</head>
+
+<body>
+
+<div class="backdrop">
+  <div class="quest-window">
+    <div class="title glitch">【 QUEST 】</div>
+
+    <div class="line glitch" id="qType">
+      TYPE: EMERGENCY
+    </div>
+
+    <div class="line" id="qObjective">
+      OBJECTIVE: Complete the assigned task.
+    </div>
+
+    <div class="line" id="qReward">
+      REWARD: ????
+    </div>
+
+    <div class="line" id="qPenalty">
+      PENALTY: Severe consequence.
+    </div>
+
+    <button onclick="acceptQuest()">ACCEPT</button>
+  </div>
+</div>
+
+<script>
+/* ===== QUEST DATA (STANDALONE) ===== */
+var QUEST = {
+  type: "EMERGENCY",
+  objective: "Complete the assigned task.",
+  reward: "System Recognition",
+  penalty: "Unknown"
+};
+
+function renderQuest(){
+  document.getElementById('qType').innerText =
+    "TYPE: " + QUEST.type;
+
+  document.getElementById('qObjective').innerText =
+    "OBJECTIVE: " + QUEST.objective;
+
+  document.getElementById('qReward').innerText =
+    "REWARD: " + QUEST.reward;
+
+  document.getElementById('qPenalty').innerText =
+    "PENALTY: " + QUEST.penalty;
+}
+
+function acceptQuest(){
+  document.body.style.background = "#000";
+  alert("QUEST ACCEPTED");
+}
+
+/* INIT */
+renderQuest();
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js');
+}
+</script>
+
+</body>
+</html>
