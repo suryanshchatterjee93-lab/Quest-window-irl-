@@ -4,223 +4,196 @@
 <meta charset="UTF-8">
 <title>Quest Window</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b0014">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&display=swap" rel="stylesheet">
-
 <style>
-:root { --glow:#00e5ff; }
-
-body{
-  margin:0;
-  font-family:'Orbitron',sans-serif;
-  background:black;
-  color:#eaffff;
-}
-
-.window{
-  max-width:420px;
-  margin:40px auto;
-  background:rgba(0,0,0,0.92);
-  border:2px solid var(--glow);
-  border-radius:18px;
-  box-shadow:0 0 30px var(--glow);
-  padding:20px;
-  animation:flicker 0.15s linear;
-}
-
-@keyframes flicker{
-  0%{opacity:0.7}
-  100%{opacity:1}
-}
-
-h1{
-  text-align:center;
-  color:var(--glow);
-  margin-bottom:10px;
-}
-
-.quest-box{
-  border:1px solid var(--glow);
-  border-radius:14px;
-  padding:14px;
-  margin-bottom:12px;
-}
-
-.label{ color:#7df9ff; font-size:0.8em; }
-.value{ margin-bottom:6px; }
-
-button{
-  width:100%;
-  margin-top:8px;
-  padding:8px;
-  border:none;
-  border-radius:10px;
-  font-family:inherit;
-  font-weight:600;
-  background:linear-gradient(135deg,var(--glow),#fff);
-  color:black;
-  cursor:pointer;
-}
-
-button.danger{
-  background:linear-gradient(135deg,#ff1744,#000);
-  color:white;
-}
-
-button:disabled{
-  opacity:0.4;
-}
-
-.log{
-  max-height:120px;
-  overflow-y:auto;
-  font-size:0.75em;
-  background:rgba(0,0,0,0.5);
-  padding:6px;
-  border-radius:8px;
+:root { --glow: #4fc3ff; }
+body { margin:0; font-family:'Orbitron',sans-serif; background:radial-gradient(circle at top,#12001f,#040008); color:#e6e6ff; }
+.container { max-width:430px; margin:30px auto; background:rgba(15,0,30,0.9); border-radius:18px; box-shadow:0 0 30px var(--glow); padding:20px; }
+h1 { text-align:center; color:var(--glow); margin-bottom:8px; }
+.panel { border:1px solid var(--glow); border-radius:14px; padding:12px; margin-bottom:14px; text-align:center; }
+button { background:linear-gradient(135deg,var(--glow),#ffffff); border:none; border-radius:10px; color:#000; padding:6px 12px; font-family:inherit; cursor:pointer; margin:4px; }
+button:disabled { opacity:0.4; cursor:not-allowed; }
+.system-msg { font-size:0.9em; color:var(--glow); margin-top:8px; min-height:24px; }
+.log { max-height:120px; overflow-y:auto; font-size:0.75em; background:rgba(0,0,0,0.4); padding:6px; border-radius:8px; margin-top:10px; text-align:left; }
+.notification { position:fixed; top:20px; right:20px; background:rgba(0,0,0,0.85); color:#fff; padding:12px 18px; border-radius:10px; box-shadow:0 0 20px var(--glow); font-weight:600; display:none; z-index:1000; }
+.flicker { animation: flicker 0.5s infinite alternate; }
+@keyframes flicker {
+  from { text-shadow: 0 0 4px var(--glow); }
+  to { text-shadow: 0 0 15px var(--glow); }
 }
 </style>
 </head>
-
 <body>
 
-<div class="window">
+<div class="container">
   <h1>【 QUEST WINDOW 】</h1>
-
-  <div class="quest-box" id="questBox">
-    <div class="label">QUEST</div>
-    <div class="value" id="qText">No active quest.</div>
-
-    <div class="label">DIFFICULTY</div>
-    <div class="value" id="qRank">—</div>
-
-    <div class="label">REWARD</div>
-    <div class="value" id="qReward">—</div>
-
-    <div class="label">PENALTY</div>
-    <div class="value" id="qPenalty">—</div>
+  <div class="panel">
+    <strong>ACTIVE QUEST</strong>
+    <div class="system-msg" id="quest-text">No active quest</div>
+    <button id="accept-btn">Accept Quest</button>
+    <button id="complete-btn">Complete Quest</button>
   </div>
 
-  <button onclick="acceptQuest()">ACCEPT QUEST</button>
-  <button onclick="completeQuest()">COMPLETE QUEST</button>
-  <button class="danger" onclick="rejectQuest()">REJECT QUEST</button>
+  <div class="panel">
+    <strong>DAILY QUESTS</strong>
+    <div id="daily-list"></div>
+  </div>
 
-  <div class="quest-box">
+  <div class="panel">
+    <strong>BONUS QUESTS</strong>
+    <div id="bonus-list"></div>
+  </div>
+
+  <div class="panel">
+    <strong>STREAK</strong>
+    <div class="system-msg" id="streak-box">0</div>
+  </div>
+
+  <div class="panel">
     <strong>LOG</strong>
-    <div class="log" id="log"></div>
+    <div class="log" id="history"></div>
   </div>
 </div>
 
-<script>
-/* ================= STATE ================= */
-var currentQuest = null;
-var questCooldown = false;
+<div class="notification" id="notification"></div>
 
-/* ================= QUEST POOL ================= */
-var questPool = [
-  { text:"50 push-ups", type:"Physical" },
-  { text:"30 squats", type:"Physical" },
-  { text:"20 minutes study", type:"Mental" },
-  { text:"10 minutes meditation", type:"Discipline" },
-  { text:"Cold shower", type:"Discipline" },
-  { text:"Read 10 pages", type:"Mental" }
+<script>
+/* ================= CORE STATE ================= */
+var dailyQuests = [
+  { name: "Workout", reward: 10, done:false },
+  { name: "Study", reward: 10, done:false },
+  { name: "Meditate", reward: 10, done:false }
 ];
 
-var ranks = ["E","D","C","B","A","S","SS","SSS"];
+var bonusQuests = [
+  { name: "Kyokushin Practice", reward: 5, done:false },
+  { name: "Muay Thai Drills", reward: 5, done:false },
+  { name: "Boxing Footwork", reward: 5, done:false }
+];
 
-/* ================= CORE ================= */
-function generateQuest(){
-  var q = questPool[Math.floor(Math.random()*questPool.length)];
-  var rank = ranks[Math.floor(Math.random()*ranks.length)];
+var currentQuest = null;
+var streak = 0;
+var logHistory = [];
 
-  currentQuest = {
-    text: q.text,
-    rank: rank,
-    reward: "+EXP / Discipline Boost",
-    penalty: "Fatigue / Mental Drain"
-  };
-
-  renderQuest();
-  save();
-}
-
-function renderQuest(){
-  if(!currentQuest){
-    document.getElementById('qText').innerText = "No active quest.";
-    return;
-  }
-
-  document.getElementById('qText').innerText = currentQuest.text;
-  document.getElementById('qRank').innerText = currentQuest.rank;
-  document.getElementById('qReward').innerText = currentQuest.reward;
-  document.getElementById('qPenalty').innerText = currentQuest.penalty;
-}
-
-function acceptQuest(){
-  if(questCooldown) {
-    log("Quest generation locked.");
-    return;
-  }
-
-  if(currentQuest) {
-    log("You already have an active quest!");
-    return;
-  }
-
-  generateQuest();
-  log("QUEST GENERATED.");
-}
-
-function completeQuest(){
-  if(!currentQuest) return;
-
-  log("QUEST COMPLETED → " + currentQuest.text);
-  currentQuest = null;
-  save();
-  renderQuest();
-}
-
-function rejectQuest(){
-  if(!currentQuest) return;
-
-  log("QUEST REJECTED. COOLDOWN APPLIED.");
-  currentQuest = null;
-  questCooldown = true;
-
-  setTimeout(function(){
-    questCooldown = false;
-    log("QUEST WINDOW READY.");
-  }, 60000); // 1 min penalty
-
-  save();
-  renderQuest();
-}
-
-/* ================= LOG ================= */
-function log(msg){
-  var l = document.getElementById('log');
-  l.innerHTML = "[" + new Date().toLocaleTimeString() + "] " + msg + "<br>" + l.innerHTML;
-}
-
-/* ================= SAVE ================= */
-function save(){
-  localStorage.setItem("questWindowSave", JSON.stringify({
-    currentQuest,
-    questCooldown
+/* ================= SAVE / LOAD ================= */
+function saveGame(){
+  localStorage.setItem('questWindowSave', JSON.stringify({
+    dailyQuests, bonusQuests, streak
   }));
 }
 
-function load(){
-  var raw = localStorage.getItem("questWindowSave");
+function loadGame(){
+  var raw = localStorage.getItem('questWindowSave');
   if(!raw) return;
   var d = JSON.parse(raw);
-  currentQuest = d.currentQuest;
-  questCooldown = d.questCooldown;
-  renderQuest();
+  dailyQuests = d.dailyQuests || dailyQuests;
+  bonusQuests = d.bonusQuests || bonusQuests;
+  streak = d.streak || streak;
 }
 
-load();
+/* ================= NOTIFY / LOG ================= */
+function notify(msg){
+  var n = document.getElementById('notification');
+  n.innerText = msg;
+  n.style.display = 'block';
+  setTimeout(()=>n.style.display='none',3500);
+  log(msg);
+}
+
+function log(msg){
+  logHistory.push(msg);
+  var h = document.getElementById('history');
+  h.innerHTML = logHistory.slice(-10).map(x => `[${new Date().toLocaleTimeString()}] ${x}`).join("<br>");
+}
+
+/* ================= QUEST FUNCTIONS ================= */
+function renderQuests(){
+  var dailyDiv = document.getElementById('daily-list');
+  dailyDiv.innerHTML = '';
+  dailyQuests.forEach((q,i)=>{
+    var btn = `<button ${q.done?'disabled':''} onclick="completeDaily(${i})">${q.done?'✔':'Do'}</button>`;
+    dailyDiv.innerHTML += `<div>${q.name} - Reward: ${q.reward} EXP ${btn}</div>`;
+  });
+
+  var bonusDiv = document.getElementById('bonus-list');
+  bonusDiv.innerHTML = '';
+  bonusQuests.forEach((q,i)=>{
+    var btn = `<button ${q.done?'disabled':''} onclick="completeBonus(${i})">${q.done?'✔':'Do'}</button>`;
+    bonusDiv.innerHTML += `<div>${q.name} - Reward: ${q.reward} EXP ${btn}</div>`;
+  });
+
+  document.getElementById('streak-box').innerText = streak;
+}
+
+function acceptQuest(){
+  if(currentQuest) {
+    notify("Already have an active quest!");
+    return;
+  }
+  // Pick a random quest
+  var allQuests = [...dailyQuests,...bonusQuests].filter(q=>!q.done);
+  if(allQuests.length===0){
+    notify("No quests available!");
+    return;
+  }
+  currentQuest = allQuests[Math.floor(Math.random()*allQuests.length)];
+  document.getElementById('quest-text').innerText = currentQuest.name + " → Reward: " + currentQuest.reward + " EXP";
+  document.getElementById('quest-text').classList.add('flicker');
+  notify("Quest Accepted: "+currentQuest.name);
+}
+
+function completeQuest(){
+  if(!currentQuest){
+    notify("No active quest!");
+    return;
+  }
+
+  // Mark quest as done
+  var q = dailyQuests.find(d=>d.name===currentQuest.name) || bonusQuests.find(b=>b.name===currentQuest.name);
+  if(q) q.done = true;
+
+  notify("Quest Completed: " + currentQuest.name + " → " + currentQuest.reward + " EXP");
+  currentQuest = null;
+  document.getElementById('quest-text').innerText = "No active quest";
+  document.getElementById('quest-text').classList.remove('flicker');
+
+  // Check if all daily quests done → increase streak
+  if(dailyQuests.every(d=>d.done)){
+    streak++;
+    notify("Daily Quests Completed! Streak: "+streak);
+  }
+
+  renderQuests();
+  saveGame();
+}
+
+function completeDaily(index){
+  var q = dailyQuests[index];
+  if(!q.done){
+    q.done = true;
+    notify(q.name+" completed! +" + q.reward + " EXP");
+    renderQuests();
+    saveGame();
+  }
+}
+
+function completeBonus(index){
+  var q = bonusQuests[index];
+  if(!q.done){
+    q.done = true;
+    notify(q.name+" completed! +" + q.reward + " EXP");
+    renderQuests();
+    saveGame();
+  }
+}
+
+/* ================= INIT ================= */
+loadGame();
+renderQuests();
+document.getElementById('accept-btn').addEventListener('click', acceptQuest);
+document.getElementById('complete-btn').addEventListener('click', completeQuest);
 </script>
 
 </body>
 </html>
-
