@@ -156,8 +156,15 @@ function renderQuest(){
 }
 
 function acceptQuest(){
-  if(currentQuest) return;
-  if(questCooldown) return log("Quest generation locked.");
+  if(questCooldown) {
+    log("Quest generation locked.");
+    return;
+  }
+
+  if(currentQuest) {
+    log("You already have an active quest!");
+    return;
+  }
 
   generateQuest();
   log("QUEST GENERATED.");
@@ -216,3 +223,4 @@ load();
 
 </body>
 </html>
+
