@@ -131,16 +131,48 @@ function acceptQuest(){
     notify("Already have an active quest!");
     return;
   }
-  // Pick a random quest
+  // Pick a random incomplete quest
   var allQuests = [...dailyQuests,...bonusQuests].filter(q=>!q.done);
   if(allQuests.length===0){
     notify("No quests available!");
     return;
   }
   currentQuest = allQuests[Math.floor(Math.random()*allQuests.length)];
-  document.getElementById('quest-text').innerText = currentQuest.name + " → Reward: " + currentQuest.reward + " EXP";
-  document.getElementById('quest-text').classList.add('flicker');
+
+  // Update UI
+  var questText = document.getElementById('quest-text');
+  questText.innerText = currentQuest.name + " → Reward: " + currentQuest.reward + " EXP";
+  questText.classList.add('flicker');
+
   notify("Quest Accepted: "+currentQuest.name);
+}
+
+function completeActiveQuest(){
+  if(!currentQuest){
+    notify("No active quest!");
+    return;
+  }
+
+  // Mark quest as done
+  var q = dailyQuests.find(d=>d.name===currentQuest.name) || bonusQuests.find(b=>b.name===currentQuest.name);
+  if(q) q.done = true;
+
+  notify("Quest Completed: " + currentQuest.name + " → " + currentQuest.reward + " EXP");
+  currentQuest = null;
+
+  // Reset active quest display
+  var questText = document.getElementById('quest-text');
+  questText.innerText = "No active quest";
+  questText.classList.remove('flicker');
+
+  // Check streak
+  if(dailyQuests.every(d=>d.done)) {
+    streak++;
+    notify("Daily Quests Completed! Streak: "+streak);
+  }
+
+  renderQuests();
+  saveGame();
 }
 
 function completeQuest(){
@@ -192,8 +224,9 @@ function completeBonus(index){
 loadGame();
 renderQuests();
 document.getElementById('accept-btn').addEventListener('click', acceptQuest);
-document.getElementById('complete-btn').addEventListener('click', completeQuest);
+document.getElementById('complete-btn').addEventListener('click', completeActiveQuest);
 </script>
 
 </body>
 </html>
+
