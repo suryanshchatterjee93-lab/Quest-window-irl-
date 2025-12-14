@@ -2,154 +2,216 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>QUEST WINDOW</title>
+<title>Quest Window</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#000000">
-
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&display=swap" rel="stylesheet">
 
 <style>
-:root{
-  --glow:#7f5cff;
-}
+:root { --glow:#00e5ff; }
 
 body{
   margin:0;
   font-family:'Orbitron',sans-serif;
   background:black;
-  overflow:hidden;
+  color:#eaffff;
 }
 
-/* ===== BACKDROP ===== */
-.backdrop{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.85);
-  display:flex;
-  justify-content:center;
-  align-items:center;
-}
-
-/* ===== QUEST WINDOW ===== */
-.quest-window{
-  background:#06000f;
+.window{
+  max-width:420px;
+  margin:40px auto;
+  background:rgba(0,0,0,0.92);
   border:2px solid var(--glow);
-  border-radius:14px;
+  border-radius:18px;
+  box-shadow:0 0 30px var(--glow);
   padding:20px;
-  width:320px;
-  box-shadow:0 0 25px var(--glow);
-  color:#fff;
-  animation:flicker 2.5s infinite;
+  animation:flicker 0.15s linear;
 }
 
-/* ===== TEXT ===== */
-.title{
-  color:var(--glow);
-  font-size:1.2em;
-  margin-bottom:10px;
-  text-align:center;
-}
-
-.line{
-  font-size:.9em;
-  margin-bottom:8px;
-}
-
-/* ===== BUTTON ===== */
-button{
-  width:100%;
-  margin-top:10px;
-  background:linear-gradient(135deg,var(--glow),#fff);
-  border:none;
-  border-radius:10px;
-  padding:8px;
-  font-family:inherit;
-  cursor:pointer;
-}
-
-/* ===== FLICKER ===== */
 @keyframes flicker{
-  0%{opacity:1}
-  5%{opacity:.85}
-  10%{opacity:1}
-  15%{opacity:.7}
-  20%{opacity:1}
+  0%{opacity:0.7}
   100%{opacity:1}
 }
 
-/* ===== GLITCH TEXT ===== */
-.glitch{
-  animation:glitch 1.8s infinite;
+h1{
+  text-align:center;
+  color:var(--glow);
+  margin-bottom:10px;
 }
-@keyframes glitch{
-  0%{text-shadow:none}
-  20%{text-shadow:2px 0 red,-2px 0 blue}
-  40%{text-shadow:none}
-  60%{text-shadow:-2px 0 red,2px 0 blue}
-  100%{text-shadow:none}
+
+.quest-box{
+  border:1px solid var(--glow);
+  border-radius:14px;
+  padding:14px;
+  margin-bottom:12px;
+}
+
+.label{ color:#7df9ff; font-size:0.8em; }
+.value{ margin-bottom:6px; }
+
+button{
+  width:100%;
+  margin-top:8px;
+  padding:8px;
+  border:none;
+  border-radius:10px;
+  font-family:inherit;
+  font-weight:600;
+  background:linear-gradient(135deg,var(--glow),#fff);
+  color:black;
+  cursor:pointer;
+}
+
+button.danger{
+  background:linear-gradient(135deg,#ff1744,#000);
+  color:white;
+}
+
+button:disabled{
+  opacity:0.4;
+}
+
+.log{
+  max-height:120px;
+  overflow-y:auto;
+  font-size:0.75em;
+  background:rgba(0,0,0,0.5);
+  padding:6px;
+  border-radius:8px;
 }
 </style>
 </head>
 
 <body>
 
-<div class="backdrop">
-  <div class="quest-window">
-    <div class="title glitch">【 QUEST 】</div>
+<div class="window">
+  <h1>【 QUEST WINDOW 】</h1>
 
-    <div class="line glitch" id="qType">
-      TYPE: EMERGENCY
-    </div>
+  <div class="quest-box" id="questBox">
+    <div class="label">QUEST</div>
+    <div class="value" id="qText">No active quest.</div>
 
-    <div class="line" id="qObjective">
-      OBJECTIVE: Complete the assigned task.
-    </div>
+    <div class="label">DIFFICULTY</div>
+    <div class="value" id="qRank">—</div>
 
-    <div class="line" id="qReward">
-      REWARD: ????
-    </div>
+    <div class="label">REWARD</div>
+    <div class="value" id="qReward">—</div>
 
-    <div class="line" id="qPenalty">
-      PENALTY: Severe consequence.
-    </div>
+    <div class="label">PENALTY</div>
+    <div class="value" id="qPenalty">—</div>
+  </div>
 
-    <button onclick="acceptQuest()">ACCEPT</button>
+  <button onclick="acceptQuest()">ACCEPT QUEST</button>
+  <button onclick="completeQuest()">COMPLETE QUEST</button>
+  <button class="danger" onclick="rejectQuest()">REJECT QUEST</button>
+
+  <div class="quest-box">
+    <strong>LOG</strong>
+    <div class="log" id="log"></div>
   </div>
 </div>
 
 <script>
-/* ===== QUEST DATA (STANDALONE) ===== */
-var QUEST = {
-  type: "EMERGENCY",
-  objective: "Complete the assigned task.",
-  reward: "System Recognition",
-  penalty: "Unknown"
-};
+/* ================= STATE ================= */
+var currentQuest = null;
+var questCooldown = false;
+
+/* ================= QUEST POOL ================= */
+var questPool = [
+  { text:"50 push-ups", type:"Physical" },
+  { text:"30 squats", type:"Physical" },
+  { text:"20 minutes study", type:"Mental" },
+  { text:"10 minutes meditation", type:"Discipline" },
+  { text:"Cold shower", type:"Discipline" },
+  { text:"Read 10 pages", type:"Mental" }
+];
+
+var ranks = ["E","D","C","B","A","S","SS","SSS"];
+
+/* ================= CORE ================= */
+function generateQuest(){
+  var q = questPool[Math.floor(Math.random()*questPool.length)];
+  var rank = ranks[Math.floor(Math.random()*ranks.length)];
+
+  currentQuest = {
+    text: q.text,
+    rank: rank,
+    reward: "+EXP / Discipline Boost",
+    penalty: "Fatigue / Mental Drain"
+  };
+
+  renderQuest();
+  save();
+}
 
 function renderQuest(){
-  document.getElementById('qType').innerText =
-    "TYPE: " + QUEST.type;
+  if(!currentQuest){
+    document.getElementById('qText').innerText = "No active quest.";
+    return;
+  }
 
-  document.getElementById('qObjective').innerText =
-    "OBJECTIVE: " + QUEST.objective;
-
-  document.getElementById('qReward').innerText =
-    "REWARD: " + QUEST.reward;
-
-  document.getElementById('qPenalty').innerText =
-    "PENALTY: " + QUEST.penalty;
+  document.getElementById('qText').innerText = currentQuest.text;
+  document.getElementById('qRank').innerText = currentQuest.rank;
+  document.getElementById('qReward').innerText = currentQuest.reward;
+  document.getElementById('qPenalty').innerText = currentQuest.penalty;
 }
 
 function acceptQuest(){
-  document.body.style.background = "#000";
-  alert("QUEST ACCEPTED");
+  if(currentQuest) return;
+  if(questCooldown) return log("Quest generation locked.");
+
+  generateQuest();
+  log("QUEST GENERATED.");
 }
 
-/* INIT */
-renderQuest();
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js');
+function completeQuest(){
+  if(!currentQuest) return;
+
+  log("QUEST COMPLETED → " + currentQuest.text);
+  currentQuest = null;
+  save();
+  renderQuest();
 }
+
+function rejectQuest(){
+  if(!currentQuest) return;
+
+  log("QUEST REJECTED. COOLDOWN APPLIED.");
+  currentQuest = null;
+  questCooldown = true;
+
+  setTimeout(function(){
+    questCooldown = false;
+    log("QUEST WINDOW READY.");
+  }, 60000); // 1 min penalty
+
+  save();
+  renderQuest();
+}
+
+/* ================= LOG ================= */
+function log(msg){
+  var l = document.getElementById('log');
+  l.innerHTML = "[" + new Date().toLocaleTimeString() + "] " + msg + "<br>" + l.innerHTML;
+}
+
+/* ================= SAVE ================= */
+function save(){
+  localStorage.setItem("questWindowSave", JSON.stringify({
+    currentQuest,
+    questCooldown
+  }));
+}
+
+function load(){
+  var raw = localStorage.getItem("questWindowSave");
+  if(!raw) return;
+  var d = JSON.parse(raw);
+  currentQuest = d.currentQuest;
+  questCooldown = d.questCooldown;
+  renderQuest();
+}
+
+load();
 </script>
 
 </body>
